@@ -1,0 +1,694 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Expense Ledger</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: ledger header with month controls, KPI strip, then calendar + breakdown (left) beside the day's records (right); stacks on phones. */
+:root {
+  --bg: #f3f5f4;
+  --surface: #ffffff;
+  --ink: #17221f;
+  --muted: #5b6b66;
+  --line: #dbe2df;
+  --accent: #0f6e66;
+  --accent-ink: #ffffff;
+  --accent-soft: #dcefeb;
+  --danger: #b4372f;
+  --c1: #d9822b; --c2: #3b7dd8; --c3: #8a5cc7; --c4: #c2477a; --c5: #2f9a62; --c6: #7b8a86;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Figtree", "Segoe UI", system-ui, sans-serif;
+  --font-num: "JetBrains Mono", ui-monospace, "Cascadia Mono", Menlo, monospace;
+  --radius: 10px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1514; --surface: #172120; --ink: #e4ece9; --muted: #95a8a2; --line: #2a3734;
+    --accent: #4cc2b4; --accent-ink: #062320; --accent-soft: #173a36; --danger: #f07a70;
+    --c1: #f0a254; --c2: #6ea6f0; --c3: #b28ae8; --c4: #ea79a6; --c5: #5cc88d; --c6: #9aaba6;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1514; --surface: #172120; --ink: #e4ece9; --muted: #95a8a2; --line: #2a3734;
+  --accent: #4cc2b4; --accent-ink: #062320; --accent-soft: #173a36; --danger: #f07a70;
+  --c1: #f0a254; --c2: #6ea6f0; --c3: #b28ae8; --c4: #ea79a6; --c5: #5cc88d; --c6: #9aaba6;
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+[hidden] { display: none !important; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 15px/1.5 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 48px;
+}
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 20px; }
+h1, h2, h3 { font-family: var(--font-display); margin: 0; text-wrap: balance; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.label { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+
+/* Header */
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; justify-content: space-between; }
+.brand h1 { font-size: 28px; font-weight: 700; letter-spacing: -.01em; }
+.brand p { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.monthnav { display: flex; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; }
+.monthnav button { border: 0; background: none; padding: 8px 14px; font-size: 18px; line-height: 1; color: var(--muted); border-radius: 999px; }
+.monthnav button:hover { color: var(--ink); background: var(--accent-soft); }
+.monthnav strong { font-family: var(--font-display); font-weight: 500; min-width: 9.5em; text-align: center; }
+.btn { border: 1px solid var(--line); background: var(--surface); padding: 8px 14px; border-radius: 999px; font-weight: 600; font-size: 14px; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.danger { color: var(--danger); }
+.btn.danger.armed { background: var(--danger); color: var(--surface); border-color: var(--danger); }
+
+.notice { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: var(--radius); background: var(--accent-soft); font-size: 14px; }
+
+/* KPI strip */
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.kpi { background: var(--surface); padding: 14px 16px; display: grid; gap: 4px; min-width: 0; }
+.kpi .value { font-family: var(--font-num); font-size: 22px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi .sub { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi:first-child .value { color: var(--accent); }
+
+/* Main grid */
+.main { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; display: grid; gap: 14px; min-width: 0; }
+.panel-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; justify-content: space-between; }
+.panel-head h2 { font-size: 18px; font-weight: 500; }
+.left { display: grid; gap: 20px; min-width: 0; }
+
+/* Calendar */
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.dow { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); text-align: center; padding-bottom: 2px; font-weight: 600; }
+.day {
+  position: relative; min-height: 70px; border-radius: 8px; border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--accent) calc(var(--heat, 0) * 38%), var(--surface));
+  padding: 6px 7px; text-align: left; display: flex; flex-direction: column; justify-content: space-between; min-width: 0;
+}
+.day:hover { border-color: var(--accent); }
+.day.blank { visibility: hidden; }
+.day .d { font-size: 13px; font-weight: 600; }
+.day .amt { font-family: var(--font-num); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.day.today .d { color: var(--accent-ink); background: var(--accent); border-radius: 999px; padding: 0 6px; align-self: flex-start; }
+.day.selected { outline: 2px solid var(--ink); outline-offset: -1px; }
+.day .flags { position: absolute; top: 7px; right: 7px; display: flex; gap: 3px; }
+.flag { width: 6px; height: 6px; border-radius: 50%; background: var(--ink); opacity: .55; }
+.flag.file { border-radius: 1px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--muted); align-items: center; }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+.legend .flag { opacity: .55; }
+
+/* Category bars */
+.bars { display: grid; gap: 10px; }
+.bar-row { display: grid; grid-template-columns: 8.5em minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: 14px; }
+.track { height: 10px; border-radius: 999px; background: var(--bg); overflow: hidden; }
+.fill { height: 100%; border-radius: 999px; }
+.bar-row .num { font-size: 13px; }
+.empty { color: var(--muted); font-size: 14px; padding: 8px 0; }
+
+/* Records */
+.tools { display: flex; gap: 8px; flex-wrap: wrap; }
+.tools input, .tools select { flex: 1 1 140px; min-width: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+.list { display: grid; gap: 0; }
+.rec { display: grid; grid-template-columns: 4px minmax(0, 1fr) auto; gap: 12px; padding: 12px 4px; border-top: 1px solid var(--line); cursor: pointer; border-radius: 6px; }
+.rec:first-child { border-top: 0; }
+.rec:hover { background: var(--bg); }
+.rec .stripe { border-radius: 4px; }
+.rec .title { font-weight: 600; overflow-wrap: anywhere; }
+.rec .meta { font-size: 13px; color: var(--muted); }
+.rec .note { font-size: 14px; margin-top: 6px; padding: 6px 10px; background: var(--bg); border-radius: 6px; white-space: pre-wrap; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.chip { font-size: 12px; border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px; background: var(--surface); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+button.chip:hover { border-color: var(--accent); color: var(--accent); }
+.rec .amount { font-family: var(--font-num); font-weight: 600; text-align: right; white-space: nowrap; }
+.ex { font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); border: 1px dashed var(--line); border-radius: 4px; padding: 0 5px; margin-left: 6px; vertical-align: 2px; font-weight: 600; }
+.list-foot { display: flex; justify-content: space-between; font-size: 14px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; }
+
+/* Dialogs */
+dialog { border: 1px solid var(--line); border-radius: 14px; padding: 0; background: var(--surface); color: var(--ink); width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 32px); }
+dialog::backdrop { background: rgb(0 0 0 / .45); }
+.dlg { padding: 20px; display: grid; gap: 14px; }
+.dlg h2 { font-size: 20px; font-weight: 500; }
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field.full { grid-column: 1 / -1; }
+.field input, .field select, .field textarea { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+.field textarea { min-height: 90px; resize: vertical; }
+.drop { border: 1.5px dashed var(--line); border-radius: 8px; padding: 14px; text-align: center; font-size: 14px; color: var(--muted); }
+.drop.over { border-color: var(--accent); background: var(--accent-soft); }
+.drop label { color: var(--accent); font-weight: 600; cursor: pointer; text-decoration: underline; }
+.attlist { display: grid; gap: 6px; }
+.att { display: flex; gap: 8px; align-items: center; justify-content: space-between; font-size: 14px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; min-width: 0; }
+.att span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.att button { border: 0; background: none; color: var(--danger); font-size: 13px; flex: none; }
+.err { color: var(--danger); font-size: 14px; min-height: 1.2em; margin: 0; }
+.actions { display: flex; gap: 8px; justify-content: space-between; flex-wrap: wrap; }
+.actions .right { display: flex; gap: 8px; margin-left: auto; }
+.viewer img { display: block; max-width: 100%; max-height: 70vh; margin: 0 auto; border-radius: 8px; }
+.viewer .file { padding: 24px; text-align: center; color: var(--muted); }
+
+@media (max-width: 880px) {
+  .main { grid-template-columns: minmax(0, 1fr); }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 520px) {
+  .day { min-height: 52px; padding: 4px 5px; }
+  .day .amt { font-size: 10px; }
+  .day .flags { top: 5px; right: 4px; }
+  .fields { grid-template-columns: 1fr; }
+  .bar-row { grid-template-columns: 6.5em minmax(0, 1fr) auto; }
+  .kpi .value { font-size: 18px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .fill { transition: width .35s ease; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>Expense Ledger</h1>
+      <p>Track daily spending, attach receipts and notes, and see the month at a glance.</p>
+    </div>
+    <div class="controls">
+      <div class="monthnav">
+        <button type="button" id="prevMonth" aria-label="Previous month">‹</button>
+        <strong id="monthLabel">—</strong>
+        <button type="button" id="nextMonth" aria-label="Next month">›</button>
+      </div>
+      <button type="button" class="btn" id="todayBtn">Today</button>
+      <button type="button" class="btn primary" id="addBtn">+ Add expense</button>
+    </div>
+  </header>
+
+  <div class="notice" id="exampleNotice" hidden>
+    <span>These are example records so you can see how the ledger works. Clear them when you are ready to add your own.</span>
+    <button type="button" class="btn" id="clearExamples">Clear examples</button>
+  </div>
+  <div class="notice" id="storageNotice" hidden>
+    <span>This browser is blocking storage, so records will be lost when you close the page.</span>
+  </div>
+
+  <section class="kpis" aria-label="Month summary">
+    <div class="kpi"><span class="label">Spent this month</span><span class="value" id="kTotal">RM 0.00</span><span class="sub" id="kTotalSub">&nbsp;</span></div>
+    <div class="kpi"><span class="label">Daily average</span><span class="value" id="kAvg">RM 0.00</span><span class="sub" id="kAvgSub">&nbsp;</span></div>
+    <div class="kpi"><span class="label">Largest expense</span><span class="value" id="kMax">—</span><span class="sub" id="kMaxSub">&nbsp;</span></div>
+    <div class="kpi"><span class="label">Records</span><span class="value" id="kCount">0</span><span class="sub" id="kCountSub">&nbsp;</span></div>
+  </section>
+
+  <div class="main">
+    <div class="left">
+      <section class="panel" aria-label="Calendar">
+        <div class="panel-head">
+          <h2>Calendar</h2>
+          <span class="label">Tap a day to filter</span>
+        </div>
+        <div class="cal" id="cal"></div>
+        <div class="legend">
+          <span>Darker day = more spent</span>
+          <span><i class="flag"></i> has a note</span>
+          <span><i class="flag file"></i> has an attachment</span>
+        </div>
+      </section>
+      <section class="panel" aria-label="Spending by category">
+        <div class="panel-head">
+          <h2>By category</h2>
+          <span class="label" id="catScope">This month</span>
+        </div>
+        <div class="bars" id="bars"></div>
+      </section>
+    </div>
+
+    <section class="panel" aria-label="Records">
+      <div class="panel-head">
+        <h2 id="listTitle">All records</h2>
+        <button type="button" class="btn" id="showMonth" hidden>Show whole month</button>
+      </div>
+      <div class="tools">
+        <input type="search" id="search" placeholder="Search description or note" aria-label="Search records">
+        <select id="catFilter" aria-label="Filter by category"></select>
+      </div>
+      <div class="list" id="list"></div>
+      <div class="list-foot"><span id="footCount">0 records</span><span class="num" id="footTotal">RM 0.00</span></div>
+    </section>
+  </div>
+</div>
+
+<dialog id="formDlg" aria-labelledby="formTitle">
+  <form class="dlg" id="form" novalidate>
+    <h2 id="formTitle">Add expense</h2>
+    <div class="fields">
+      <div class="field">
+        <label class="label" for="fDate">Date</label>
+        <input type="date" id="fDate" required>
+      </div>
+      <div class="field">
+        <label class="label" for="fAmount">Amount (RM)</label>
+        <input type="number" id="fAmount" inputmode="decimal" step="0.01" min="0" placeholder="0.00" required>
+      </div>
+      <div class="field full">
+        <label class="label" for="fDesc">Description</label>
+        <input type="text" id="fDesc" maxlength="120" placeholder="e.g. Lunch with client" required>
+      </div>
+      <div class="field">
+        <label class="label" for="fCat">Category</label>
+        <select id="fCat"></select>
+      </div>
+      <div class="field">
+        <label class="label" for="fPay">Paid with</label>
+        <select id="fPay">
+          <option>Cash</option><option>Debit card</option><option>Credit card</option><option>E-wallet</option><option>Bank transfer</option>
+        </select>
+      </div>
+      <div class="field full">
+        <label class="label" for="fNote">Note</label>
+        <textarea id="fNote" maxlength="2000" placeholder="Anything to remember: who it was for, claim reference, warranty details…"></textarea>
+      </div>
+      <div class="field full">
+        <span class="label">Attachments</span>
+        <div class="drop" id="drop">
+          Drop receipts or photos here, or <label for="fFiles">browse files</label>
+          <input type="file" id="fFiles" multiple accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt" hidden>
+          <div style="font-size:12px;margin-top:4px">Images, PDF or documents, up to 10 MB each</div>
+        </div>
+        <div class="attlist" id="attList"></div>
+      </div>
+    </div>
+    <p class="err" id="formErr" role="alert"></p>
+    <div class="actions">
+      <button type="button" class="btn danger" id="deleteBtn" hidden>Delete</button>
+      <div class="right">
+        <button type="button" class="btn" id="cancelBtn">Cancel</button>
+        <button type="submit" class="btn primary" id="saveBtn">Save expense</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="viewDlg" aria-labelledby="viewTitle">
+  <div class="dlg">
+    <h2 id="viewTitle">Attachment</h2>
+    <div class="viewer" id="viewer"></div>
+    <div class="actions"><div class="right"><a class="btn" id="openLink" target="_blank" rel="noopener">Open in new tab</a><button type="button" class="btn" id="viewClose">Close</button></div></div>
+  </div>
+</dialog>
+
+<script>
+(function () {
+  "use strict";
+
+  const CATS = [
+    { id: "food", label: "Food & drinks", color: "var(--c1)" },
+    { id: "transport", label: "Transport", color: "var(--c2)" },
+    { id: "bills", label: "Bills & utilities", color: "var(--c3)" },
+    { id: "shopping", label: "Shopping", color: "var(--c4)" },
+    { id: "health", label: "Health", color: "var(--c5)" },
+    { id: "other", label: "Other", color: "var(--c6)" },
+  ];
+  const catById = Object.fromEntries(CATS.map(c => [c.id, c]));
+  const MAX_FILE = 10 * 1024 * 1024;
+  const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+  // ---------- storage (IndexedDB, with in-memory fallback) ----------
+  let db = null;
+  function openDB() {
+    return new Promise(resolve => {
+      try {
+        const req = indexedDB.open("expense-ledger", 1);
+        req.onupgradeneeded = () => req.result.createObjectStore("expenses", { keyPath: "id" });
+        req.onsuccess = () => { db = req.result; resolve(); };
+        req.onerror = req.onblocked = () => resolve();
+      } catch (e) { resolve(); }
+    });
+  }
+  function store(mode) { return db.transaction("expenses", mode).objectStore("expenses"); }
+  function dbAll() {
+    if (!db) return Promise.resolve([]);
+    return new Promise(resolve => {
+      try { const r = store("readonly").getAll(); r.onsuccess = () => resolve(r.result || []); r.onerror = () => resolve([]); }
+      catch (e) { resolve([]); }
+    });
+  }
+  function dbPut(rec) {
+    if (!db) return Promise.resolve();
+    return new Promise(resolve => {
+      try { const r = store("readwrite").put(rec); r.onsuccess = r.onerror = () => resolve(); } catch (e) { resolve(); }
+    });
+  }
+  function dbDel(id) {
+    if (!db) return Promise.resolve();
+    return new Promise(resolve => {
+      try { const r = store("readwrite").delete(id); r.onsuccess = r.onerror = () => resolve(); } catch (e) { resolve(); }
+    });
+  }
+  function getFlag(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function setFlag(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+
+  // ---------- helpers ----------
+  const $ = id => document.getElementById(id);
+  const pad = n => String(n).padStart(2, "0");
+  const ymd = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+  const todayStr = () => ymd(new Date());
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const money = n => "RM " + n.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  function short(n) {
+    if (n >= 10000) return (n / 1000).toFixed(0) + "k";
+    if (n >= 1000) return (n / 1000).toFixed(1) + "k";
+    return n >= 100 ? n.toFixed(0) : n.toFixed(2).replace(/\.00$/, "");
+  }
+  function niceDate(s) {
+    const [y, m, d] = s.split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString("en-MY", { weekday: "short", day: "numeric", month: "short" });
+  }
+  function fileSize(b) { return b < 1024 ? b + " B" : b < 1048576 ? (b / 1024).toFixed(0) + " KB" : (b / 1048576).toFixed(1) + " MB"; }
+
+  // ---------- state ----------
+  let records = [];
+  const now = new Date();
+  let viewY = now.getFullYear(), viewM = now.getMonth();
+  let selectedDay = null;
+
+  function monthKey() { return viewY + "-" + pad(viewM + 1); }
+  function monthRecords() { const k = monthKey(); return records.filter(r => r.date.startsWith(k)); }
+
+  // ---------- examples ----------
+  function exampleRecords() {
+    const d = new Date(), y = d.getFullYear(), m = d.getMonth(), last = d.getDate();
+    const day = n => ymd(new Date(y, m, Math.max(1, Math.min(n, last))));
+    const mk = (n, amount, desc, cat, pay, note) => ({ id: uid(), date: day(n), amount, desc, cat, pay, note: note || "", attachments: [], example: true, created: Date.now() });
+    return [
+      mk(1, 1450, "Monthly rent", "bills", "Bank transfer", "Paid to landlord, ref DX-1001."),
+      mk(2, 12.5, "Nasi lemak & teh tarik", "food", "Cash"),
+      mk(3, 85.2, "Petrol", "transport", "Debit card"),
+      mk(5, 129.9, "Electricity bill", "bills", "E-wallet", "Higher than last month because of the aircond."),
+      mk(7, 38, "Grab rides", "transport", "E-wallet"),
+      mk(8, 64.3, "Groceries", "food", "Debit card"),
+      mk(last - 2, 45, "Clinic visit", "health", "Cash", "Claimable from company panel clinic. Keep the receipt."),
+      mk(last - 1, 219, "New running shoes", "shopping", "Credit card", "30-day return window."),
+      mk(last, 26.8, "Lunch with team", "food", "E-wallet"),
+    ];
+  }
+
+  // ---------- rendering ----------
+  function render() {
+    $("monthLabel").textContent = MONTHS[viewM] + " " + viewY;
+    $("exampleNotice").hidden = !records.some(r => r.example);
+    renderKpis();
+    renderCalendar();
+    renderBars();
+    renderList();
+  }
+
+  function renderKpis() {
+    const list = monthRecords();
+    const total = list.reduce((s, r) => s + r.amount, 0);
+    const daysInMonth = new Date(viewY, viewM + 1, 0).getDate();
+    const isCurrent = viewY === now.getFullYear() && viewM === now.getMonth();
+    const isFuture = new Date(viewY, viewM, 1) > now;
+    const elapsed = isCurrent ? now.getDate() : isFuture ? 0 : daysInMonth;
+
+    // previous month comparison
+    const prev = new Date(viewY, viewM - 1, 1);
+    const pk = prev.getFullYear() + "-" + pad(prev.getMonth() + 1);
+    const prevTotal = records.filter(r => r.date.startsWith(pk)).reduce((s, r) => s + r.amount, 0);
+
+    $("kTotal").textContent = money(total);
+    if (prevTotal > 0) {
+      const diff = (total - prevTotal) / prevTotal * 100;
+      $("kTotalSub").textContent = (diff >= 0 ? "▲ " : "▼ ") + Math.abs(diff).toFixed(0) + "% vs " + MONTHS[prev.getMonth()];
+    } else {
+      $("kTotalSub").textContent = "No spending recorded in " + MONTHS[prev.getMonth()];
+    }
+    $("kAvg").textContent = money(elapsed ? total / elapsed : 0);
+    $("kAvgSub").textContent = elapsed ? "over " + elapsed + " day" + (elapsed > 1 ? "s" : "") : "month not started";
+
+    const max = list.reduce((a, r) => (!a || r.amount > a.amount ? r : a), null);
+    $("kMax").textContent = max ? money(max.amount) : "—";
+    $("kMaxSub").textContent = max ? max.desc : "nothing recorded yet";
+
+    const withNotes = list.filter(r => r.note).length;
+    const withAtt = list.filter(r => r.attachments && r.attachments.length).length;
+    $("kCount").textContent = list.length;
+    $("kCountSub").textContent = withNotes + " with notes · " + withAtt + " with attachments";
+  }
+
+  function renderCalendar() {
+    const cal = $("cal");
+    const byDay = {};
+    monthRecords().forEach(r => {
+      const e = byDay[r.date] || (byDay[r.date] = { total: 0, note: false, att: false });
+      e.total += r.amount;
+      if (r.note) e.note = true;
+      if (r.attachments && r.attachments.length) e.att = true;
+    });
+    // Scale heat on a square-root curve so one big bill (like rent) doesn't wash out every other day.
+    const maxDay = Math.max(0, ...Object.values(byDay).map(e => e.total));
+    const first = new Date(viewY, viewM, 1);
+    const offset = (first.getDay() + 6) % 7; // Monday first
+    const days = new Date(viewY, viewM + 1, 0).getDate();
+    const today = todayStr();
+
+    let html = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d => '<div class="dow">' + d + "</div>").join("");
+    for (let i = 0; i < offset; i++) html += '<div class="day blank" aria-hidden="true"></div>';
+    for (let d = 1; d <= days; d++) {
+      const key = viewY + "-" + pad(viewM + 1) + "-" + pad(d);
+      const e = byDay[key];
+      const heat = e && maxDay ? Math.sqrt(e.total / maxDay) : 0;
+      const cls = ["day"];
+      if (key === today) cls.push("today");
+      if (key === selectedDay) cls.push("selected");
+      const label = d + " " + MONTHS[viewM] + (e ? ", " + money(e.total) + " spent" : ", nothing spent");
+      html += '<button type="button" class="' + cls.join(" ") + '" data-day="' + key + '" style="--heat:' + heat.toFixed(3) + '" aria-label="' + label + '" aria-pressed="' + (key === selectedDay) + '">' +
+        '<span class="d">' + d + "</span>" +
+        (e ? '<span class="flags">' + (e.note ? '<i class="flag"></i>' : "") + (e.att ? '<i class="flag file"></i>' : "") + "</span>" : "") +
+        '<span class="amt">' + (e ? short(e.total) : "") + "</span></button>";
+    }
+    cal.innerHTML = html;
+  }
+
+  function renderBars() {
+    const list = selectedDay ? records.filter(r => r.date === selectedDay) : monthRecords();
+    $("catScope").textContent = selectedDay ? niceDate(selectedDay) : "This month";
+    const sums = {};
+    list.forEach(r => { sums[r.cat] = (sums[r.cat] || 0) + r.amount; });
+    const rows = CATS.filter(c => sums[c.id]).sort((a, b) => sums[b.id] - sums[a.id]);
+    if (!rows.length) { $("bars").innerHTML = '<div class="empty">No spending to break down yet.</div>'; return; }
+    const max = sums[rows[0].id];
+    const total = list.reduce((s, r) => s + r.amount, 0);
+    $("bars").innerHTML = rows.map(c =>
+      '<div class="bar-row"><span>' + esc(c.label) + '</span>' +
+      '<div class="track" title="' + Math.round(sums[c.id] / total * 100) + '% of total"><div class="fill" style="width:' + (sums[c.id] / max * 100).toFixed(1) + "%;background:" + c.color + '"></div></div>' +
+      '<span class="num">' + money(sums[c.id]) + "</span></div>"
+    ).join("");
+  }
+
+  function renderList() {
+    const q = $("search").value.trim().toLowerCase();
+    const cf = $("catFilter").value;
+    let list = selectedDay ? records.filter(r => r.date === selectedDay) : monthRecords();
+    if (cf) list = list.filter(r => r.cat === cf);
+    if (q) list = list.filter(r => (r.desc + " " + r.note).toLowerCase().includes(q));
+    list.sort((a, b) => b.date.localeCompare(a.date) || b.created - a.created);
+
+    $("listTitle").textContent = selectedDay ? niceDate(selectedDay) : "All records in " + MONTHS[viewM];
+    $("showMonth").hidden = !selectedDay;
+
+    if (!list.length) {
+      const msg = q || cf ? "No records match your search." : selectedDay ? "Nothing recorded on this day. Use “Add expense” to log one." : "No expenses this month yet. Use “Add expense” to log your first one.";
+      $("list").innerHTML = '<div class="empty">' + msg + "</div>";
+    } else {
+      $("list").innerHTML = list.map(r => {
+        const c = catById[r.cat] || catById.other;
+        const atts = (r.attachments || []).map((a, i) =>
+          '<button type="button" class="chip" data-view="' + r.id + '" data-idx="' + i + '" title="View ' + esc(a.name) + '">📎 ' + esc(a.name) + "</button>").join("");
+        return '<div class="rec" data-id="' + r.id + '" role="button" tabindex="0" aria-label="Edit ' + esc(r.desc) + '">' +
+          '<span class="stripe" style="background:' + c.color + '"></span>' +
+          "<div style=\"min-width:0\">" +
+            '<div class="title">' + esc(r.desc) + (r.example ? '<span class="ex">Example</span>' : "") + "</div>" +
+            '<div class="meta">' + niceDate(r.date) + " · " + esc(c.label) + " · " + esc(r.pay) + "</div>" +
+            (r.note ? '<div class="note">' + esc(r.note) + "</div>" : "") +
+            (atts ? '<div class="chips">' + atts + "</div>" : "") +
+          "</div>" +
+          '<div class="amount">' + money(r.amount) + "</div></div>";
+      }).join("");
+    }
+    const total = list.reduce((s, r) => s + r.amount, 0);
+    $("footCount").textContent = list.length + " record" + (list.length === 1 ? "" : "s");
+    $("footTotal").textContent = money(total);
+  }
+
+  // ---------- form ----------
+  let editing = null;     // record id being edited, or null
+  let draftAtts = [];     // attachments in the open form
+
+  function openForm(rec) {
+    editing = rec ? rec.id : null;
+    draftAtts = rec ? (rec.attachments || []).slice() : [];
+    $("formTitle").textContent = rec ? "Edit expense" : "Add expense";
+    $("saveBtn").textContent = rec ? "Save changes" : "Save expense";
+    $("fDate").value = rec ? rec.date : (selectedDay || todayStr());
+    $("fAmount").value = rec ? rec.amount : "";
+    $("fDesc").value = rec ? rec.desc : "";
+    $("fCat").value = rec ? rec.cat : "food";
+    $("fPay").value = rec ? rec.pay : "Cash";
+    $("fNote").value = rec ? rec.note : "";
+    $("formErr").textContent = "";
+    const del = $("deleteBtn");
+    del.hidden = !rec; del.classList.remove("armed"); del.textContent = "Delete";
+    renderAtts();
+    $("formDlg").showModal();
+    $(rec ? "fDesc" : "fAmount").focus();
+  }
+
+  function renderAtts() {
+    $("attList").innerHTML = draftAtts.map((a, i) =>
+      '<div class="att"><span>📎 ' + esc(a.name) + ' <span style="color:var(--muted)">(' + fileSize(a.size) + ')</span></span>' +
+      '<button type="button" data-rm="' + i + '">Remove</button></div>').join("");
+  }
+
+  function addFiles(files) {
+    const skipped = [];
+    Array.from(files).forEach(f => {
+      if (f.size > MAX_FILE) { skipped.push(f.name); return; }
+      draftAtts.push({ name: f.name, type: f.type || "application/octet-stream", size: f.size, blob: f });
+    });
+    $("formErr").textContent = skipped.length ? "Skipped " + skipped.join(", ") + ": files must be 10 MB or smaller." : "";
+    renderAtts();
+  }
+
+  async function save(e) {
+    e.preventDefault();
+    const amount = Math.round(parseFloat($("fAmount").value) * 100) / 100;
+    const desc = $("fDesc").value.trim();
+    const date = $("fDate").value;
+    if (!date) return void ($("formErr").textContent = "Pick the date of the expense.");
+    if (!(amount > 0)) return void ($("formErr").textContent = "Enter an amount greater than 0.");
+    if (!desc) return void ($("formErr").textContent = "Add a short description so you can find it later.");
+    const old = editing && records.find(r => r.id === editing);
+    const rec = {
+      id: old ? old.id : uid(), date, amount, desc,
+      cat: $("fCat").value, pay: $("fPay").value, note: $("fNote").value.trim(),
+      attachments: draftAtts, created: old ? old.created : Date.now(),
+    };
+    records = records.filter(r => r.id !== rec.id).concat(rec);
+    await dbPut(rec);
+    $("formDlg").close();
+    const [y, m] = date.split("-").map(Number);
+    viewY = y; viewM = m - 1;
+    if (selectedDay && selectedDay !== date) selectedDay = date;
+    render();
+  }
+
+  // ---------- attachment viewer ----------
+  let viewUrl = null;
+  function viewAttachment(rec, idx) {
+    const a = rec.attachments[idx];
+    if (!a) return;
+    if (viewUrl) URL.revokeObjectURL(viewUrl);
+    viewUrl = URL.createObjectURL(a.blob);
+    $("viewTitle").textContent = a.name;
+    $("viewer").innerHTML = a.type.startsWith("image/")
+      ? '<img src="' + viewUrl + '" alt="' + esc(a.name) + '">'
+      : '<div class="file">' + esc(a.name) + "<br>" + fileSize(a.size) + "<br>Use “Open in new tab” to view this file.</div>";
+    $("openLink").href = viewUrl;
+    $("viewDlg").showModal();
+  }
+
+  // ---------- events ----------
+  function wire() {
+    $("fCat").innerHTML = CATS.map(c => '<option value="' + c.id + '">' + esc(c.label) + "</option>").join("");
+    $("catFilter").innerHTML = '<option value="">All categories</option>' + CATS.map(c => '<option value="' + c.id + '">' + esc(c.label) + "</option>").join("");
+
+    $("prevMonth").onclick = () => { viewM--; if (viewM < 0) { viewM = 11; viewY--; } selectedDay = null; render(); };
+    $("nextMonth").onclick = () => { viewM++; if (viewM > 11) { viewM = 0; viewY++; } selectedDay = null; render(); };
+    $("todayBtn").onclick = () => { viewY = now.getFullYear(); viewM = now.getMonth(); selectedDay = todayStr(); render(); };
+    $("addBtn").onclick = () => openForm(null);
+    $("showMonth").onclick = () => { selectedDay = null; render(); };
+    $("search").oninput = renderList;
+    $("catFilter").onchange = renderList;
+
+    $("cal").onclick = e => {
+      const b = e.target.closest("[data-day]");
+      if (!b) return;
+      selectedDay = selectedDay === b.dataset.day ? null : b.dataset.day;
+      render();
+    };
+    $("cal").ondblclick = e => {
+      const b = e.target.closest("[data-day]");
+      if (b) { selectedDay = b.dataset.day; render(); openForm(null); }
+    };
+
+    const list = $("list");
+    list.onclick = e => {
+      const chip = e.target.closest("[data-view]");
+      if (chip) { e.stopPropagation(); viewAttachment(records.find(r => r.id === chip.dataset.view), +chip.dataset.idx); return; }
+      const row = e.target.closest("[data-id]");
+      if (row) openForm(records.find(r => r.id === row.dataset.id));
+    };
+    list.onkeydown = e => {
+      if ((e.key === "Enter" || e.key === " ") && e.target.matches(".rec")) { e.preventDefault(); openForm(records.find(r => r.id === e.target.dataset.id)); }
+    };
+
+    $("form").onsubmit = save;
+    $("cancelBtn").onclick = () => $("formDlg").close();
+    $("deleteBtn").onclick = async () => {
+      const b = $("deleteBtn");
+      if (!b.classList.contains("armed")) { b.classList.add("armed"); b.textContent = "Tap again to delete"; return; }
+      records = records.filter(r => r.id !== editing);
+      await dbDel(editing);
+      $("formDlg").close();
+      render();
+    };
+    $("fFiles").onchange = e => { addFiles(e.target.files); e.target.value = ""; };
+    $("attList").onclick = e => {
+      const b = e.target.closest("[data-rm]");
+      if (b) { draftAtts.splice(+b.dataset.rm, 1); renderAtts(); }
+    };
+    const drop = $("drop");
+    drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
+    drop.ondragleave = () => drop.classList.remove("over");
+    drop.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); addFiles(e.dataTransfer.files); };
+
+    $("viewClose").onclick = () => $("viewDlg").close();
+    $("clearExamples").onclick = async () => {
+      const ex = records.filter(r => r.example);
+      records = records.filter(r => !r.example);
+      await Promise.all(ex.map(r => dbDel(r.id)));
+      render();
+    };
+  }
+
+  async function start() {
+    wire();
+    render();
+    await openDB();
+    $("storageNotice").hidden = !!db;
+    records = await dbAll();
+    if (!records.length && !getFlag("expense-ledger-seeded")) {
+      records = exampleRecords();
+      await Promise.all(records.map(dbPut));
+      setFlag("expense-ledger-seeded", "1");
+    }
+    render();
+  }
+  start();
+})();
+</script>
+</body>
+</html>
