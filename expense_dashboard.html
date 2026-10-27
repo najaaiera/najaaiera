@@ -25,6 +25,8 @@
   --accent-ink: #ffffff;
   --accent-soft: #dcefeb;
   --danger: #b4372f;
+  --good: #23845a;
+  --warn: #b26a00;
   --c1: #d9822b; --c2: #3b7dd8; --c3: #8a5cc7; --c4: #c2477a; --c5: #2f9a62; --c6: #7b8a86;
   --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
   --font-body: "Figtree", "Segoe UI", system-ui, sans-serif;
@@ -35,14 +37,14 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #0f1514; --surface: #172120; --ink: #e4ece9; --muted: #95a8a2; --line: #2a3734;
-    --accent: #4cc2b4; --accent-ink: #062320; --accent-soft: #173a36; --danger: #f07a70;
+    --accent: #4cc2b4; --accent-ink: #062320; --accent-soft: #173a36; --danger: #f07a70; --good: #5cc88d; --warn: #f0b354;
     --c1: #f0a254; --c2: #6ea6f0; --c3: #b28ae8; --c4: #ea79a6; --c5: #5cc88d; --c6: #9aaba6;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #0f1514; --surface: #172120; --ink: #e4ece9; --muted: #95a8a2; --line: #2a3734;
-  --accent: #4cc2b4; --accent-ink: #062320; --accent-soft: #173a36; --danger: #f07a70;
+  --accent: #4cc2b4; --accent-ink: #062320; --accent-soft: #173a36; --danger: #f07a70; --good: #5cc88d; --warn: #f0b354;
   --c1: #f0a254; --c2: #6ea6f0; --c3: #b28ae8; --c4: #ea79a6; --c5: #5cc88d; --c6: #9aaba6;
   color-scheme: dark;
 }
@@ -119,13 +121,33 @@ input, select, textarea { font-size: 16px; }
 .legend span { display: inline-flex; gap: 6px; align-items: center; }
 .legend .flag { opacity: .55; }
 
-/* Category bars */
-.bars { display: grid; gap: 10px; }
-.bar-row { display: grid; grid-template-columns: 8.5em minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: 14px; }
+/* Budget */
+.budget-sum { display: grid; gap: 8px; }
+.budget-sum .line { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; justify-content: space-between; }
+.budget-sum .big { font-family: var(--font-num); font-size: 20px; font-weight: 600; }
+.budget-sum .of { color: var(--muted); font-size: 14px; }
+.budget-sum .hint { font-size: 13px; color: var(--muted); }
 .track { height: 10px; border-radius: 999px; background: var(--bg); overflow: hidden; }
 .fill { height: 100%; border-radius: 999px; }
-.bar-row .num { font-size: 13px; }
-.empty { color: var(--muted); font-size: 14px; padding: 8px 0; }
+.btrack { position: relative; height: 12px; border-radius: 999px; background: var(--bg); }
+.btrack .fill { position: absolute; inset: 0 auto 0 0; max-width: 100%; }
+.pace { position: absolute; top: -4px; bottom: -4px; width: 2px; border-radius: 2px; background: var(--ink); opacity: .55; }
+.brows { display: grid; }
+.brow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; padding: 12px 0; border-top: 1px solid var(--line); align-items: center; }
+.brow .name { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-weight: 600; font-size: 14px; min-width: 0; }
+.brow .dot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.brow .figs { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: 13px; text-align: right; white-space: nowrap; }
+.brow .track { grid-column: 1 / -1; height: 8px; position: relative; }
+.brow .track .fill { position: absolute; inset: 0 auto 0 0; max-width: 100%; }
+.brow .left-txt { grid-column: 1 / -1; font-size: 13px; color: var(--muted); }
+.pill { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; font-weight: 600; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+.pill.ok { color: var(--good); background: color-mix(in srgb, var(--good) 14%, var(--surface)); }
+.pill.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 16%, var(--surface)); }
+.pill.over { color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, var(--surface)); }
+.pill.none { color: var(--muted); border: 1px dashed var(--line); }
+.carry { font-size: 13px; color: var(--muted); }
+.bfields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.btotal { display: flex; justify-content: space-between; padding: 10px 12px; border-radius: 8px; background: var(--bg); font-weight: 600; }
 
 /* Records */
 .tools { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -179,7 +201,6 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
 @media (min-width: 740px) and (max-width: 1024px) {
   .main { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
   .day { min-height: 60px; padding: 5px 6px; }
-  .bar-row { grid-template-columns: 7em minmax(0, 1fr) auto; }
 }
 @media (max-width: 739px) {
   .main { grid-template-columns: minmax(0, 1fr); }
@@ -189,8 +210,7 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
   .day { min-height: 52px; padding: 4px 5px; }
   .day .amt { font-size: 10px; }
   .day .flags { top: 5px; right: 4px; }
-  .fields { grid-template-columns: 1fr; }
-  .bar-row { grid-template-columns: 6.5em minmax(0, 1fr) auto; }
+  .fields, .bfields { grid-template-columns: 1fr; }
   .kpi .value { font-size: 18px; }
 }
 @media (prefers-reduced-motion: no-preference) {
@@ -245,12 +265,12 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
           <span><i class="flag file"></i> has an attachment</span>
         </div>
       </section>
-      <section class="panel" aria-label="Spending by category">
+      <section class="panel" aria-label="Budget">
         <div class="panel-head">
-          <h2>By category</h2>
-          <span class="label" id="catScope">This month</span>
+          <h2>Budget</h2>
+          <button type="button" class="btn" id="editBudget">Edit budget</button>
         </div>
-        <div class="bars" id="bars"></div>
+        <div id="budget"></div>
       </section>
     </div>
 
@@ -323,6 +343,22 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
   </form>
 </dialog>
 
+<dialog id="budgetDlg" aria-labelledby="budgetTitle">
+  <form class="dlg" id="budgetForm" novalidate>
+    <h2 id="budgetTitle">Monthly budget</h2>
+    <p class="carry" id="budgetHelp" style="margin:0"></p>
+    <div class="bfields" id="bFields"></div>
+    <div class="btotal"><span>Total budget</span><span class="num" id="bTotal">RM 0.00</span></div>
+    <p class="err" id="budgetErr" role="alert"></p>
+    <div class="actions">
+      <div class="right">
+        <button type="button" class="btn" id="budgetCancel">Cancel</button>
+        <button type="submit" class="btn primary">Save budget</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
 <dialog id="viewDlg" aria-labelledby="viewTitle">
   <div class="dlg">
     <h2 id="viewTitle">Attachment</h2>
@@ -352,31 +388,35 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
   function openDB() {
     return new Promise(resolve => {
       try {
-        const req = indexedDB.open("expense-ledger", 1);
-        req.onupgradeneeded = () => req.result.createObjectStore("expenses", { keyPath: "id" });
+        const req = indexedDB.open("expense-ledger", 2);
+        req.onupgradeneeded = () => {
+          const d = req.result;
+          if (!d.objectStoreNames.contains("expenses")) d.createObjectStore("expenses", { keyPath: "id" });
+          if (!d.objectStoreNames.contains("budgets")) d.createObjectStore("budgets", { keyPath: "month" });
+        };
         req.onsuccess = () => { db = req.result; resolve(); };
         req.onerror = req.onblocked = () => resolve();
       } catch (e) { resolve(); }
     });
   }
-  function store(mode) { return db.transaction("expenses", mode).objectStore("expenses"); }
-  function dbAll() {
+  function store(mode, name = "expenses") { return db.transaction(name, mode).objectStore(name); }
+  function dbAll(name) {
     if (!db) return Promise.resolve([]);
     return new Promise(resolve => {
-      try { const r = store("readonly").getAll(); r.onsuccess = () => resolve(r.result || []); r.onerror = () => resolve([]); }
+      try { const r = store("readonly", name).getAll(); r.onsuccess = () => resolve(r.result || []); r.onerror = () => resolve([]); }
       catch (e) { resolve([]); }
     });
   }
-  function dbPut(rec) {
+  function dbPut(rec, name) {
     if (!db) return Promise.resolve();
     return new Promise(resolve => {
-      try { const r = store("readwrite").put(rec); r.onsuccess = r.onerror = () => resolve(); } catch (e) { resolve(); }
+      try { const r = store("readwrite", name).put(rec); r.onsuccess = r.onerror = () => resolve(); } catch (e) { resolve(); }
     });
   }
-  function dbDel(id) {
+  function dbDel(id, name) {
     if (!db) return Promise.resolve();
     return new Promise(resolve => {
-      try { const r = store("readwrite").delete(id); r.onsuccess = r.onerror = () => resolve(); } catch (e) { resolve(); }
+      try { const r = store("readwrite", name).delete(id); r.onsuccess = r.onerror = () => resolve(); } catch (e) { resolve(); }
     });
   }
   function getFlag(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -404,12 +444,20 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
 
   // ---------- state ----------
   let records = [];
+  let budgets = {};   // "YYYY-MM" -> { month, amounts: { catId: RM }, example? }
   const now = new Date();
   let viewY = now.getFullYear(), viewM = now.getMonth();
   let selectedDay = null;
 
   function monthKey() { return viewY + "-" + pad(viewM + 1); }
   function monthRecords() { const k = monthKey(); return records.filter(r => r.date.startsWith(k)); }
+  // A month without its own budget uses the latest earlier month's, so budgets carry forward.
+  function budgetFor(k) {
+    if (budgets[k]) return { ...budgets[k], from: k };
+    const earlier = Object.keys(budgets).filter(m => m < k).sort().pop();
+    return earlier ? { ...budgets[earlier], from: earlier } : null;
+  }
+  function monthName(k) { const [y, m] = k.split("-").map(Number); return MONTHS[m - 1] + " " + y; }
 
   // ---------- examples ----------
   function exampleRecords() {
@@ -429,13 +477,19 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     ];
   }
 
+  function exampleBudget() {
+    const d = new Date();
+    return { month: d.getFullYear() + "-" + pad(d.getMonth() + 1), example: true,
+      amounts: { food: 600, transport: 300, bills: 1700, shopping: 200, health: 150, other: 100 } };
+  }
+
   // ---------- rendering ----------
   function render() {
     $("monthLabel").textContent = MONTHS[viewM] + " " + viewY;
-    $("exampleNotice").hidden = !records.some(r => r.example);
+    $("exampleNotice").hidden = !records.some(r => r.example) && !Object.values(budgets).some(b => b.example);
     renderKpis();
     renderCalendar();
-    renderBars();
+    renderBudget();
     renderList();
   }
 
@@ -506,20 +560,107 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     cal.innerHTML = html;
   }
 
-  function renderBars() {
-    const list = selectedDay ? records.filter(r => r.date === selectedDay) : monthRecords();
-    $("catScope").textContent = selectedDay ? niceDate(selectedDay) : "This month";
-    const sums = {};
-    list.forEach(r => { sums[r.cat] = (sums[r.cat] || 0) + r.amount; });
-    const rows = CATS.filter(c => sums[c.id]).sort((a, b) => sums[b.id] - sums[a.id]);
-    if (!rows.length) { $("bars").innerHTML = '<div class="empty">No spending to break down yet.</div>'; return; }
-    const max = sums[rows[0].id];
-    const total = list.reduce((s, r) => s + r.amount, 0);
-    $("bars").innerHTML = rows.map(c =>
-      '<div class="bar-row"><span>' + esc(c.label) + '</span>' +
-      '<div class="track" title="' + Math.round(sums[c.id] / total * 100) + '% of total"><div class="fill" style="width:' + (sums[c.id] / max * 100).toFixed(1) + "%;background:" + c.color + '"></div></div>' +
-      '<span class="num">' + money(sums[c.id]) + "</span></div>"
-    ).join("");
+  function renderBudget() {
+    const k = monthKey();
+    const b = budgetFor(k);
+    const list = monthRecords();
+    const spent = {};
+    list.forEach(r => { spent[r.cat] = (spent[r.cat] || 0) + r.amount; });
+    const totalSpent = list.reduce((s, r) => s + r.amount, 0);
+    const amounts = b ? b.amounts : {};
+    const totalBudget = CATS.reduce((s, c) => s + (amounts[c.id] || 0), 0);
+    $("editBudget").textContent = totalBudget ? "Edit budget" : "Set budget";
+
+    // How far through the month we are, for the pace marker and "per day" hint.
+    const daysInMonth = new Date(viewY, viewM + 1, 0).getDate();
+    const isCurrent = viewY === now.getFullYear() && viewM === now.getMonth();
+    const isPast = new Date(viewY, viewM + 1, 1) <= now;
+    const daysLeft = isCurrent ? daysInMonth - now.getDate() + 1 : isPast ? 0 : daysInMonth;
+    const pace = isCurrent ? now.getDate() / daysInMonth : isPast ? 1 : 0;
+
+    const status = (used, budget) => {
+      if (!budget) return used ? ["none", "No budget"] : null;
+      if (used > budget) return ["over", "Over by " + money(used - budget)];
+      if (used >= budget * 0.85) return ["warn", "Almost used"];
+      return ["ok", "On track"];
+    };
+
+    let html = "";
+    if (totalBudget) {
+      const left = totalBudget - totalSpent;
+      const pct = Math.min(totalSpent / totalBudget, 1) * 100;
+      const st = status(totalSpent, totalBudget);
+      let hint;
+      if (left < 0) hint = "You have spent " + money(-left) + " more than planned this month.";
+      else if (daysLeft > 0) hint = money(left) + " left · about " + money(left / daysLeft) + " a day for the " + daysLeft + " day" + (daysLeft > 1 ? "s" : "") + " remaining";
+      else hint = money(left) + " left unspent";
+      html += '<div class="budget-sum">' +
+        '<div class="line"><span><span class="big">' + money(totalSpent) + '</span> <span class="of">of ' + money(totalBudget) + '</span></span>' +
+        '<span class="pill ' + st[0] + '">' + st[1] + "</span></div>" +
+        '<div class="btrack" role="img" aria-label="' + Math.round(totalSpent / totalBudget * 100) + '% of budget used">' +
+          '<div class="fill" style="width:' + pct.toFixed(1) + "%;background:" + (left < 0 ? "var(--danger)" : "var(--accent)") + '"></div>' +
+          (pace > 0 && pace < 1 ? '<span class="pace" style="left:calc(' + (pace * 100).toFixed(1) + '% - 1px)" title="Where spending would be if spread evenly through the month"></span>' : "") +
+        "</div>" +
+        '<div class="hint">' + hint + (pace > 0 && pace < 1 ? ". The dark tick marks an even pace for today." : "") + "</div>" +
+        (b.from !== k ? '<div class="carry">Carried over from ' + monthName(b.from) + ". Edit to set a budget just for " + MONTHS[viewM] + ".</div>" : "") +
+        "</div>";
+    } else {
+      html += '<div class="empty">No budget for ' + MONTHS[viewM] + ' yet. Use “Set budget” to plan how much to spend in each category.</div>';
+    }
+
+    // Most-used budgets first; categories spent without a budget go last.
+    const ratio = c => amounts[c.id] ? (spent[c.id] || 0) / amounts[c.id] : -1;
+    const rows = CATS.filter(c => amounts[c.id] || spent[c.id]).sort((a, c) => ratio(c) - ratio(a));
+    if (rows.length) {
+      html += '<div class="brows">' + rows.map(c => {
+        const used = spent[c.id] || 0, bud = amounts[c.id] || 0;
+        const st = status(used, bud);
+        const width = bud ? Math.min(used / bud, 1) * 100 : 100;
+        const fill = bud && used > bud ? "var(--danger)" : c.color;
+        const leftTxt = bud ? (used > bud ? money(used - bud) + " over budget" : money(bud - used) + " left · " + Math.round(used / bud * 100) + "% used") : "Spent without a budget";
+        return '<div class="brow">' +
+          '<span class="name"><i class="dot" style="background:' + c.color + '"></i>' + esc(c.label) + (st ? ' <span class="pill ' + st[0] + '">' + (st[0] === "over" ? "Over" : st[1]) + "</span>" : "") + "</span>" +
+          '<span class="figs">' + money(used) + (bud ? ' <span style="color:var(--muted)">/ ' + money(bud) + "</span>" : "") + "</span>" +
+          '<div class="track"><div class="fill" style="width:' + width.toFixed(1) + "%;background:" + fill + (bud ? "" : ";opacity:.35") + '"></div></div>' +
+          '<span class="left-txt">' + leftTxt + "</span></div>";
+      }).join("") + "</div>";
+    }
+    $("budget").innerHTML = html;
+  }
+
+  function openBudget() {
+    const k = monthKey();
+    const b = budgetFor(k);
+    const amounts = b ? b.amounts : {};
+    $("budgetTitle").textContent = "Budget for " + MONTHS[viewM] + " " + viewY;
+    $("budgetHelp").textContent = "Set how much you plan to spend in each category. Leave a category empty for no limit. Later months reuse this budget until you change it.";
+    $("bFields").innerHTML = CATS.map(c =>
+      '<div class="field"><label class="label" for="b_' + c.id + '">' + esc(c.label) + " (RM)</label>" +
+      '<input type="number" id="b_' + c.id + '" data-cat="' + c.id + '" inputmode="decimal" step="0.01" min="0" placeholder="No limit" value="' + (amounts[c.id] || "") + '"></div>').join("");
+    $("budgetErr").textContent = "";
+    updateBudgetTotal();
+    $("budgetDlg").showModal();
+  }
+  function updateBudgetTotal() {
+    let t = 0;
+    $("bFields").querySelectorAll("input").forEach(i => { const v = parseFloat(i.value); if (v > 0) t += v; });
+    $("bTotal").textContent = money(t);
+  }
+  async function saveBudget(e) {
+    e.preventDefault();
+    const amounts = {};
+    let bad = false;
+    $("bFields").querySelectorAll("input").forEach(i => {
+      if (i.value === "") return;
+      const v = Math.round(parseFloat(i.value) * 100) / 100;
+      if (!(v >= 0)) bad = true; else if (v > 0) amounts[i.dataset.cat] = v;
+    });
+    if (bad) return void ($("budgetErr").textContent = "Budgets must be numbers of 0 or more.");
+    const rec = { month: monthKey(), amounts };
+    budgets[rec.month] = rec;
+    await dbPut(rec, "budgets");
+    $("budgetDlg").close();
+    render();
   }
 
   function renderList() {
@@ -692,10 +833,17 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     drop.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); addFiles(e.dataTransfer.files); };
 
     $("viewClose").onclick = () => $("viewDlg").close();
+    $("editBudget").onclick = openBudget;
+    $("budgetCancel").onclick = () => $("budgetDlg").close();
+    $("budgetForm").onsubmit = saveBudget;
+    $("bFields").oninput = updateBudgetTotal;
     $("clearExamples").onclick = async () => {
       const ex = records.filter(r => r.example);
       records = records.filter(r => !r.example);
       await Promise.all(ex.map(r => dbDel(r.id)));
+      const exB = Object.values(budgets).filter(b => b.example);
+      exB.forEach(b => delete budgets[b.month]);
+      await Promise.all(exB.map(b => dbDel(b.month, "budgets")));
       render();
     };
   }
@@ -705,12 +853,20 @@ dialog::backdrop { background: rgb(0 0 0 / .45); }
     render();
     await openDB();
     $("storageNotice").hidden = !!db;
-    records = await dbAll();
+    records = await dbAll("expenses");
+    (await dbAll("budgets")).forEach(b => { budgets[b.month] = b; });
     if (!records.length && !getFlag("expense-ledger-seeded")) {
       records = exampleRecords();
-      await Promise.all(records.map(dbPut));
+      await Promise.all(records.map(r => dbPut(r, "expenses")));
       setFlag("expense-ledger-seeded", "1");
     }
+    // Existing users (seeded before budgets existed) get an example budget once too.
+    if (!Object.keys(budgets).length && !getFlag("expense-ledger-budget-seeded") && records.some(r => r.example)) {
+      const eb = exampleBudget();
+      budgets[eb.month] = eb;
+      await dbPut(eb, "budgets");
+    }
+    setFlag("expense-ledger-budget-seeded", "1");
     render();
   }
   start();
